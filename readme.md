@@ -13,12 +13,13 @@
 2. ui界面布局
 3. 
 
-加急：
+## 加急：
 1. 发送socket数据包给下机位 
 
-
+## 日志
+---
+#### 2-29-9:39报错日志
 ```bash
-#2-29-9:39报错日志
 e:\workspace\PyQt\dev_project\Aim\GUI\main.py:327: DeprecationWarning: 'exec_' will be removed in the future. Use 'exec' instead.
   sys.exit(app.exec_()) 
 
@@ -41,3 +42,4 @@ e:\workspace\PyQt\dev_project\Aim\GUI\main.py:88: DeprecationWarning: Function: 
 
   ----> 说明： socket加载视频帧的方法存在问题，但是目前不影响运行
 ```
+---
