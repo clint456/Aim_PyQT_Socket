@@ -1,13 +1,18 @@
+import pickle
 import select
 import socket
 import threading
 
 def handle_client(client_socket):
     while True:
-        data = client_socket.recv(1024)
+        data = client_socket.recv(4096)
         if not data:
             break
-        print(f"Received data from {client_socket.getpeername()}: {data.decode('utf-8')}")
+        try:
+            received_data = pickle.loads(data)
+            print("Received data:", received_data)
+        except pickle.UnpicklingError as e:
+            print("Error unpickling data:", e)
 
     print(f"Connection from {client_socket.getpeername()} closed.")
     client_socket.close()
@@ -45,7 +50,10 @@ while True:
             client_handler.start()
         else:
             # 有数据可读
-            data = s.recv(1024)
+            data = s.recv(4096)
+            # 解析 pickle 包
+
+
             if not data:
                 # 客户端断开连接
                 print(f"Connection from {s.getpeername()} closed.")
@@ -53,4 +61,8 @@ while True:
                 s.close()
             else:
                 # 打印接收到的数据
-                print(f"Received data from {s.getpeername()}: {data.decode('utf-8')}")
+                try:
+                    received_data = pickle.loads(data)
+                    print("Received data:", received_data)
+                except pickle.UnpicklingError as e:
+                    print("Error unpickling data:", e)

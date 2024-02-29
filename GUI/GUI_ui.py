@@ -60,7 +60,7 @@ class Ui_Form(object):
         self.label_2.setText(QCoreApplication.translate("Form", u"\u4e91\u53f0\u753b\u9762", None))
         self.groupBox.setTitle(QCoreApplication.translate("Form", u"Groupbox", None))
         self.pushButton_aim.setText(QCoreApplication.translate("Form", u"\u7784\u51c6", None))
-        self.pushButton_shot.setText(QCoreApplication.translate("Form", u"\u5c04\u51fb", None))
+        self.pushButton_shot.setText(QCoreApplication.translate("Form", u"\u5f00\u706b", None))
         self.playButton.setText("")
     # retranslateUi
 

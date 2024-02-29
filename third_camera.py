@@ -136,10 +136,14 @@ def main_loop():
 			# Convert frame to bytes
 
 
-			frame = imutils.resize(frame, width=800,height=576)  # 调整图像大小
+			# frame = imutils.resize(frame, width=800,height=576)  # 调整图像大小
+			# data = pickle.dumps(frame)
+			# message_size = struct.pack("L", len(data))
+			# frame_socket.sendall(message_size + data)
 			data = pickle.dumps(frame)
-			message_size = struct.pack("L", len(data))
-			frame_socket.sendall(message_size + data)
+            size = struct.pack('!I', len(data))
+            self.connection.write(size)
+            self.connection.write(data)
    
 			b = datetime.datetime.fromtimestamp(time.time()).timestamp()
 			print(f'2---{datetime.datetime.fromtimestamp(time.time())}') 
