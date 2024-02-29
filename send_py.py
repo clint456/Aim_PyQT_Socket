@@ -4,7 +4,7 @@ import pickle
 import struct
 
 class VideoSender:
-    def __init__(self, host='localhost', port = 9999):
+    def __init__(self, host='localhost', port = 5555):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((host, port))
         self.server_socket.listen(1)

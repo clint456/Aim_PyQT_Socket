@@ -20,19 +20,23 @@
 ---
 #### 2-29-9:39报错日志
 ```bash
+1.
+----------------------------------------------------------
 e:\workspace\PyQt\dev_project\Aim\GUI\main.py:327: DeprecationWarning: 'exec_' will be removed in the future. Use 'exec' instead.
   sys.exit(app.exec_()) 
 
   ----> 修改 : 更改pyside6库后要使用下面的方法调用
   sys.exit(app.exec_()) 
   --> sys.exit(app.exec())
-
-
+----------------------------------------------------------
+2.
+----------------------------------------------------------
 e:\workspace\PyQt\dev_project\Aim\GUI\main.py:88: DeprecationWarning: Function: 'QMouseEvent.globalPos() const' is marked as deprecated, please check the documentation for more information.
   global_pos = event.globalPos()
   ----> 说明：此方法在本版本可以正常运行，但是即将启用，后期如果更新版本，需要更改
-
-
+----------------------------------------------------------
+3.
+----------------------------------------------------------
 反序列化时出错：invalid load key, '\x00'.
 接收视频时发生错误：local variable 'frame' referenced before assignment
 反序列化时出错：invalid load key, '\x00'.
@@ -41,5 +45,8 @@ e:\workspace\PyQt\dev_project\Aim\GUI\main.py:88: DeprecationWarning: Function: 
 接收视频时发生错误：local variable 'frame' referenced before assignment
 
   ----> 说明： socket加载视频帧的方法存在问题，但是目前不影响运行
+----------------------------------------------------------
+4.
+----------------------------------------------------------
 ```
 ---

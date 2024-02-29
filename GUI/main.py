@@ -25,22 +25,26 @@ class MyMainWindow(QMainWindow, Ui_Form):
 
     # def __init__(self, parent=None, video_url="", video_type=VIDEO_TYPE_OFFLINE, auto_play=True):
     #     super(MyMainWindow, self).__init__(parent)
-    def __init__(self, parent=None, video_url="", video_type=VIDEO_TYPE_OFFLINE, auto_play=True,address = "localhost", port=9999):
+    def __init__(self, parent=None, video_url="", video_type=VIDEO_TYPE_OFFLINE, auto_play=True,socket_config = ["localhost",5555,"localhost",9999]):
         super().__init__()
         # socket初始化
-        self.socket_port = port
-        self.socket_adress = address
+        self.socket_address_receive = socket_config[0]
+        self.socket_port_receive = socket_config[1]
+        self.socket_address_send = socket_config[2]
+        self.socket_port_send = socket_config[3]
+
+        self.socket_send_flag =False
+        self.socket_receive_flag =False
+
+        # 视频源初始化
         self.video_type = video_type
-
-        if self.video_type == VIDEO_TYPE_REAL_TIME:
-            self.init_socket_server()
-
         self.video_url = video_url
         self.video_type = video_type
         self.auto_play = auto_play
 
         self.is_switching = False
         self.is_pause = True
+
         # 初始化界面
         self.setupUi(self)
 
@@ -67,7 +71,7 @@ class MyMainWindow(QMainWindow, Ui_Form):
         layout.addLayout(control_box)
         self.setLayout(layout)
 
-        # 定时器设置
+        # 定时器循环设置
         self.timer = VideoTimer()
         self.timer.timeSignal.signal[str].connect(self.show_video_images)
 
@@ -82,23 +86,17 @@ class MyMainWindow(QMainWindow, Ui_Form):
         self.CreateSignalSlot()
 
     # 鼠标点击事件
-    #将 event.globalPos() 替换为了 event.globalPosition()，这是 PyQt5 中的替代方法
-        """pyside6 鼠标点击事件
-        global_pos = event.globalPos()
-        local_pos = self.pictureLabel.mapFromGlobal(global_pos)
-
-        if event.button() == Qt.LeftButton:
-            print(f"鼠标点击全局坐标：({global_pos.x()}, {global_pos.y()})")
-            print(f"鼠标点击相对坐标：({local_pos.x()}, {local_pos.y()})")
-        """
     def mousePressEvent(self, event):
         global_pos = event.globalPos()
         local_pos = self.pictureLabel.mapFromGlobal(global_pos)
         if event.button() == Qt.LeftButton and self.pictureLabel.rect().contains(local_pos):
-            print(f"鼠标点击全局坐标：({global_pos.x()}, {global_pos.y()})")
-            print(f"鼠标点击相对坐标：({local_pos.x()}, {local_pos.y()})")
+            print(f"鼠标点击:\n全局坐标：({global_pos.x()}, {global_pos.y()})")
+            print(f"相对坐标：({local_pos.x()}, {local_pos.y()})")
         super(MyMainWindow, self).mousePressEvent(event)
-
+        # Convert QPoint to a string representation
+        pos_str = f"{local_pos.x()},{local_pos.y()}"
+        # Now you can send pos_str over the socket
+        self.server_socket.send(pos_str.encode('utf-8'))
     # 创建信号与槽连接
     def CreateSignalSlot(self):
         self.pushButton_aim.clicked.connect(self.aim_handle)
@@ -194,8 +192,10 @@ class MyMainWindow(QMainWindow, Ui_Form):
         elif self.video_type is VIDEO_TYPE_REAL_TIME:
             if self.is_pause or self.is_switching:
 
-                self.init_socket_server()
+                self.init_socket_receive_server()
+                self.init_socket_send_server()
                 self.timer.start()
+                print("视频帧获取定时器开启")
 
                 self.is_pause = False
                 self.playButton.setText('停止')
@@ -205,7 +205,11 @@ class MyMainWindow(QMainWindow, Ui_Form):
             elif (not self.is_pause) and (not self.is_switching):
 
                 self.timer.stop()
+                print("视频帧获取定时器关闭")
                 self.socket_client.close()
+                print("接收服务器关闭")
+                self.server_socket.close()
+                print("发送服务器关闭")
                 
 
                 self.is_pause = True
@@ -214,11 +218,23 @@ class MyMainWindow(QMainWindow, Ui_Form):
                 
 
     # socket服务器初始化
-    def init_socket_server(self):
+    def init_socket_receive_server(self):
+# ============= 接收客户端初始化 ================================
         self.socket_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print(f"Socket服务器已启动，监听端口：{self.socket_port}")
-        self.socket_client.connect((self.socket_adress, self.socket_port))
-        print("Socket客户端已连接")
+        print(f"Socket服务器已启动，监听端口：{self.socket_port_receive}")
+        self.socket_client.connect((self.socket_address_receive, self.socket_port_receive))
+        print("Socket【接收图像端】已连接")
+        self.socket_send_flag = True
+
+    def init_socket_send_server(self):
+# ============= 发送客户端初始化 ================================
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            self.server_socket.connect((self.socket_address_send, self.socket_port_send))
+        except Exception as e:
+            print("发送坐标客户端初始化失败",e)
+            return
+
 
     # socket 视频接收
     def receive_video_from_socket(self):
@@ -259,6 +275,7 @@ class Communicate(QObject):
 
 # 视频定时器类
 class VideoTimer(QThread):
+    
     def __init__(self, frequent=20):
         QThread.__init__(self)
         self.stopped = False
@@ -266,6 +283,7 @@ class VideoTimer(QThread):
         self.timeSignal = Communicate()
         self.mutex = QMutex()
 
+    # 死循环：每20ms刷新一次
     def run(self):
         with QMutexLocker(self.mutex):
             self.stopped = False
@@ -279,27 +297,16 @@ class VideoTimer(QThread):
         with QMutexLocker(self.mutex):
             self.stopped = True
 
-    def is_stopped(self):
-        with QMutexLocker(self.mutex):
-            return self.stopped
-
-    def set_fps(self, fps):
-        self.frequent = fps
-
-
 """
 # 定义一些常量和状态
 VIDEO_TYPE_OFFLINE = 0
 VIDEO_TYPE_REAL_TIME = 1
-STATUS_INIT = 0
-STATUS_PLAYING = 1
-STATUS_PAUSE = 2
 
 GUI/resource/video.mp4
 """
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    myWin = MyMainWindow()
+    myWin = MyMainWindow(socket_config=["localhost",5555,"localhost",9999])
     myWin.set_video("",VIDEO_TYPE_REAL_TIME)
     myWin.show()
     sys.exit(app.exec())
