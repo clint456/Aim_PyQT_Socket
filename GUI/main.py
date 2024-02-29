@@ -18,9 +18,6 @@ from PySide6 import QtCore, QtGui, QtWidgets
 # 定义一些常量和状态
 VIDEO_TYPE_OFFLINE = 0
 VIDEO_TYPE_REAL_TIME = 1
-STATUS_INIT = 0
-STATUS_PLAYING = 1
-STATUS_PAUSE = 2
 
 # 定义主窗口类，继承自QMainWindow和UI文件生成的类
 class MyMainWindow(QMainWindow, Ui_Form):
@@ -41,8 +38,9 @@ class MyMainWindow(QMainWindow, Ui_Form):
         self.video_url = video_url
         self.video_type = video_type
         self.auto_play = auto_play
-        self.status = STATUS_INIT
 
+        self.is_switching = False
+        self.is_pause = True
         # 初始化界面
         self.setupUi(self)
 
@@ -84,11 +82,21 @@ class MyMainWindow(QMainWindow, Ui_Form):
         self.CreateSignalSlot()
 
     # 鼠标点击事件
+    #将 event.globalPos() 替换为了 event.globalPosition()，这是 PyQt5 中的替代方法
+        """pyside6 鼠标点击事件
+        global_pos = event.globalPos()
+        local_pos = self.pictureLabel.mapFromGlobal(global_pos)
+
+        if event.button() == Qt.LeftButton:
+            print(f"鼠标点击全局坐标：({global_pos.x()}, {global_pos.y()})")
+            print(f"鼠标点击相对坐标：({local_pos.x()}, {local_pos.y()})")
+        """
     def mousePressEvent(self, event):
         global_pos = event.globalPos()
         local_pos = self.pictureLabel.mapFromGlobal(global_pos)
         if event.button() == Qt.LeftButton and self.pictureLabel.rect().contains(local_pos):
-            print(f"鼠标点击位置：({local_pos.x()}, {local_pos.y()})")
+            print(f"鼠标点击全局坐标：({global_pos.x()}, {global_pos.y()})")
+            print(f"鼠标点击相对坐标：({local_pos.x()}, {local_pos.y()})")
         super(MyMainWindow, self).mousePressEvent(event)
 
     # 创建信号与槽连接
@@ -98,69 +106,35 @@ class MyMainWindow(QMainWindow, Ui_Form):
 
     def aim_handle(self):
         print("瞄准中")
+
         pass
 
     def shot_handle(self):
         print("射击")
+
         pass
 
+#   初始化 播放
     def reset(self):
         self.timer.stop()
         self.playCapture.release()
-        self.status = STATUS_INIT
         self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
 
-    def set_timer_fps(self):
-        self.playCapture.open(self.video_url)
-        # fps = self.playCapture.get(cv2.CAP_PROP_FPS)
-        # print(f"帧率为：{fps}")
-        # self.timer.set_fps(fps)
-        self.playCapture.release()
-
+#   设置视频流输入方式
     def set_video(self, url, video_type=VIDEO_TYPE_OFFLINE, auto_play=True):
         self.reset()
         self.video_url = url
         self.video_type = video_type
         self.auto_play = auto_play
-        #self.set_timer_fps()
         if self.auto_play:
             self.switch_socket_video()
 
-    def play(self):
-        if self.video_url == "" or self.video_url is None:
-            return
-        if not self.playCapture.isOpened():
-            self.playCapture.open(self.video_url)
-        self.timer.start()
-        self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
-        self.status = MyMainWindow.STATUS_PLAYING
-
-    def stop(self):
-        if self.video_url == "" or self.video_url is None:
-            return
-        if self.playCapture.isOpened():
-            self.timer.stop()
-            if self.video_type is VIDEO_TYPE_REAL_TIME:
-                self.playCapture.release()
-            self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
-        self.status = MyMainWindow.STATUS_PAUSE
-
-    def re_play(self):
-        if self.video_url == "" or self.video_url is None:
-            return
-        self.playCapture.release()
-        self.playCapture.open(self.video_url)
-        self.timer.start()
-        self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
-        self.status = MyMainWindow.STATUS_PLAYING
 
     """
     VIDEO_TYPE_OFFLINE = 0
     VIDEO_TYPE_REAL_TIME = 1
-    STATUS_INIT = 0
-    STATUS_PLAYING = 1
-    STATUS_PAUSE = 2
     """
+    # 播放视频流
     def show_video_images(self):
         if self.video_type  == VIDEO_TYPE_OFFLINE:
             if self.playCapture.isOpened():
@@ -182,6 +156,7 @@ class MyMainWindow(QMainWindow, Ui_Form):
                     if not success and self.video_type is VIDEO_TYPE_OFFLINE:
                         print("播放完成")
                         self.reset()
+                        # 设置按键形状
                         self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaStop))
                     return
             else:
@@ -190,57 +165,62 @@ class MyMainWindow(QMainWindow, Ui_Form):
         elif self.video_type is VIDEO_TYPE_REAL_TIME:
             self.receive_video_from_socket()
 
-############## 按键的逻辑有问题
+    # mp4播放控制模块
     def switch_video(self):
+
         if self.video_url == "" or self.video_url is None:
             return
-        if self.status is STATUS_INIT:
+        if self.is_pause or self.is_switching:
+
             self.playCapture.open(self.video_url)
-            self.timer.start()
-            self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
-        elif self.status is STATUS_PLAYING:
+
             self.timer.stop()
-            if self.video_type is VIDEO_TYPE_REAL_TIME:
-                self.playCapture.release()
-            self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
-        elif self.status is STATUS_PAUSE:
-            if self.video_type is VIDEO_TYPE_REAL_TIME:
-                self.playCapture.open(self.video_url)
-            self.timer.start()
+
+            self.is_pause = False
+            self.playButton.setText('停止')
             self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
+        elif (not self.is_pause) and (not self.is_switching):
 
-        self.status = (STATUS_PLAYING,
-                       STATUS_PAUSE,
-                       STATUS_PLAYING)[self.status]
+            self.timer.start()
 
+            self.is_pause = True
+            self.playButton.setText('运行')
+            self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+
+    #  socket播放视频控制模块
     def switch_socket_video(self):
         if self.video_type is VIDEO_TYPE_OFFLINE:
             self.switch_video()
         elif self.video_type is VIDEO_TYPE_REAL_TIME:
-            if self.status is STATUS_INIT:
+            if self.is_pause or self.is_switching:
+
                 self.init_socket_server()
                 self.timer.start()
-                self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
-                self.status = STATUS_PLAYING
-                threading.Thread(target=self.receive_video_from_socket).start()
-            elif self.status is STATUS_PLAYING:
-                self.timer.stop()
-                self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
-                self.socket_client.close()
-            elif self.status is STATUS_PAUSE:
-                self.timer.start()
-                self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
-                self.status = STATUS_PLAYING
-            self.status = (STATUS_PLAYING,
-                           STATUS_PAUSE,
-                           STATUS_PLAYING)[self.status]
 
+                self.is_pause = False
+                self.playButton.setText('停止')
+                self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
+                # 接收socket线程启动 ，这里暂时不需要
+                threading.Thread(target=self.receive_video_from_socket).start()
+            elif (not self.is_pause) and (not self.is_switching):
+
+                self.timer.stop()
+                self.socket_client.close()
+                
+
+                self.is_pause = True
+                self.playButton.setText('运行')
+                self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+                
+
+    # socket服务器初始化
     def init_socket_server(self):
         self.socket_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         print(f"Socket服务器已启动，监听端口：{self.socket_port}")
         self.socket_client.connect((self.socket_adress, self.socket_port))
         print("Socket客户端已连接")
 
+    # socket 视频接收
     def receive_video_from_socket(self):
         try:
             size_data = self.socket_client.recv(4)
@@ -257,6 +237,7 @@ class MyMainWindow(QMainWindow, Ui_Form):
         except Exception as e:
             print(f"接收视频时发生错误：{e}")
 
+    # socket视频显示 -> qt
     def show_video_frame(self, frame):
         if frame is not None:
             height, width = frame.shape[:2]
@@ -313,10 +294,12 @@ VIDEO_TYPE_REAL_TIME = 1
 STATUS_INIT = 0
 STATUS_PLAYING = 1
 STATUS_PAUSE = 2
+
+GUI/resource/video.mp4
 """
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     myWin = MyMainWindow()
-    myWin.set_video(" ",VIDEO_TYPE_REAL_TIME)
+    myWin.set_video("",VIDEO_TYPE_REAL_TIME)
     myWin.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
