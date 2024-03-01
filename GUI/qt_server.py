@@ -298,7 +298,7 @@ class Communicate(QObject):
 # 视频定时器类
 class VideoTimer(QThread):
     
-    def __init__(self, frequent=20):
+    def __init__(self, frequent=10):
         QThread.__init__(self)
         self.stopped = False
         self.frequent = frequent
