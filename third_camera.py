@@ -12,24 +12,19 @@ import pickle
 import struct
 import imutils
 
-def socket_framesend_init():
-    global frame_socket,frame_addr    
-    # 创建一个socket对象
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # 获取本地主机名
-    host = '127.0.0.1'
-    port = 9999
-    # 绑定端口
-    server_socket.bind((host, port))
-    # 设置最大连接数，超过后排队
-    server_socket.listen(5)
-    # 建立客户端连接
-    frame_socket, frame_addr = server_socket.accept()
-    print('连接地址：', frame_addr)
+
 
     
 def main_loop():
-	socket_framesend_init()
+	host='localhost'
+	port = 5555
+	server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	server_socket.bind((host, port))
+	server_socket.listen(1)
+	client_socket, addr = server_socket.accept()
+	connection = client_socket.makefile('wb')
+
+	
 	print('等待连接')
 	# 枚举相机
 	DevList = mvsdk.CameraEnumerateDevice()
@@ -69,7 +64,7 @@ def main_loop():
 
 	# 手动曝光，曝光时间30ms
 	mvsdk.CameraSetAeState(hCamera, 0)
-	mvsdk.CameraSetExposureTime(hCamera, 10 * 1000)
+	mvsdk.CameraSetExposureTime(hCamera, 15 * 1000)
  
 	# 增益
 	mvsdk.CameraSetAnalogGain(hCamera,16)
@@ -101,7 +96,7 @@ def main_loop():
 		# 从相机取一帧图片
 		try:
 			a = datetime.datetime.fromtimestamp(time.time()).timestamp()
-			print(f'1---{datetime.datetime.fromtimestamp(time.time())}')
+			#print(f'1---{datetime.datetime.fromtimestamp(time.time())}')
    
 			pRawData, FrameHead = mvsdk.CameraGetImageBuffer(hCamera, 200)
 			mvsdk.CameraImageProcess(hCamera, pRawData, pFrameBuffer, FrameHead)
@@ -141,12 +136,12 @@ def main_loop():
 			# message_size = struct.pack("L", len(data))
 			# frame_socket.sendall(message_size + data)
 			data = pickle.dumps(frame)
-            size = struct.pack('!I', len(data))
-            self.connection.write(size)
-            self.connection.write(data)
+			size = struct.pack('!I', len(data))
+			connection.write(size)
+			connection.write(data)
    
 			b = datetime.datetime.fromtimestamp(time.time()).timestamp()
-			print(f'2---{datetime.datetime.fromtimestamp(time.time())}') 
+			#print(f'2---{datetime.datetime.fromtimestamp(time.time())}') 
 
 			fps = f'FPS={round(1/(b-a))}'
 			cv2.putText(frame,fps,(0,20), cv2.FONT_HERSHEY_SIMPLEX,0.5,(255,255,255),2)

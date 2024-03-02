@@ -5,7 +5,7 @@ import threading
 
 def handle_client(client_socket):
     while True:
-        data = client_socket.recv(4096)
+        data = client_socket.recv(1024)
         if not data:
             break
         try:
@@ -50,7 +50,7 @@ while True:
             client_handler.start()
         else:
             # 有数据可读
-            data = s.recv(4096)
+            data = s.recv(1024)
             # 解析 pickle 包
 
 
