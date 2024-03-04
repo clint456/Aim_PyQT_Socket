@@ -11,7 +11,7 @@ import cv2
 from socket import *
 
 # 127.0.0.1表示本机的IP，用于测试，使用时需要改为服务端的ip
-addr = ('127.0.0.1', 9999) 
+addr = ('127.0.0.1', 5555) 
 
 cap = cv2.VideoCapture(0)
 
