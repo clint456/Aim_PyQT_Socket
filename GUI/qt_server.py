@@ -128,7 +128,7 @@ class MyMainWindow(QMainWindow, Ui_Form):
         self.pos_str = {'x':local_pos.x(),'y':local_pos.y(),'fire':self.is_fire}
         # 发送坐标数据
         pickle_data = pickle.dumps(self.pos_str)
-        self.server_socket.send(pickle_data)
+        # self.server_socket.send(pickle_data)
 
 
 
@@ -181,7 +181,7 @@ class MyMainWindow(QMainWindow, Ui_Form):
                 print("打开文件或捕获设备错误，重新初始化")
                 self.reset()
         elif self.video_type is VIDEO_TYPE_REAL_TIME:
-            self.receive_video_from_socket()
+            self.udpStream_server()
 
     # mp4播放控制模块
     def switch_video(self):
@@ -211,25 +211,28 @@ class MyMainWindow(QMainWindow, Ui_Form):
             self.switch_video()
         elif self.video_type is VIDEO_TYPE_REAL_TIME:
             if self.is_pause or self.is_switching:
-
-                self.init_socket_receive_server()
-                self.init_socket_send_server()
+                
                 self.timer.start()
-                print("视频帧获取定时器开启")
+                print("视频帧获取定时器----开启")
+                self.init_socket_receive_server()
+                print("【接收图像】服务器---开启")
+                #self.init_socket_send_server()
+                 #print("【发送坐标】客户端开启")
+                
 
                 self.is_pause = False
                 self.playButton.setText('停止')
                 self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
                 # 接收socket线程启动 ，这里暂时不需要
-                threading.Thread(target=self.receive_video_from_socket).start()
+                #threading.Thread(target=self.udpStream_server).start()
             elif (not self.is_pause) and (not self.is_switching):
 
                 self.timer.stop()
-                print("视频帧获取定时器关闭")
+                print("视频帧获取定时器---关闭")
                 self.socket_client.close()
-                print("【接收图像】服务器关闭")
-                self.server_socket.close()
-                print("【发送坐标】客户端关闭")
+                print("【接收图像】服务器====关闭")
+                #self.server_socket.close()
+                #print("【发送坐标】客户端关闭")
                 
 
                 self.is_pause = True
@@ -240,10 +243,15 @@ class MyMainWindow(QMainWindow, Ui_Form):
     # socket服务器初始化
     def init_socket_receive_server(self):
 # ============= 接收客户端初始化 ================================
-        self.socket_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket_client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         print(f"Socket服务器已启动，监听端口：{self.socket_port_receive}")
-        self.socket_client.connect((self.socket_address_receive, self.socket_port_receive))
-        print("Socket【接收图像】服务器已连接")
+        #设置非阻塞模式
+        self.socket_client.bind(('0.0.0.0',5555))
+        self.socket_client.setblocking(0)
+
+        #self.socket_client.connect((self.socket_address_receive, self.socket_port_receive))
+        #print("Socket【接收图像】服务器已连接")
+        
         self.socket_send_flag = True
 
     def init_socket_send_server(self):
@@ -257,7 +265,23 @@ class MyMainWindow(QMainWindow, Ui_Form):
             print("发送坐标客户端初始化失败",e)
             return
 
+    def udpStream_server(self):
+        data = None
+        print("------------------视频流进入")
+        try:
+            data, _ = self.socket_client.recvfrom(921600)
+            receive_data = np.frombuffer(data, dtype='uint8')
+            r_img = cv2.imdecode(receive_data, 1)
+            self.show_video_frame(r_img)
+            #cv2.putText(r_img, "server", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            cv2.imshow('server', r_img)
+            # cv2.putText(r_img, "server", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            # cv2.imshow('server', r_img)
+        except BlockingIOError as e:
+            pass
 
+        # if cv2.waitKey(1) & 0xFF == ord('q'):
+        #     self.timer.stop()
     # socket 视频接收
     def receive_video_from_socket(self):
         # try:
@@ -298,7 +322,7 @@ class Communicate(QObject):
 # 视频定时器类
 class VideoTimer(QThread):
     
-    def __init__(self, frequent=20):
+    def __init__(self, frequent=200):
         QThread.__init__(self)
         self.stopped = False
         self.frequent = frequent
