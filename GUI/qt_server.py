@@ -1,9 +1,7 @@
-import os
 import pickle
 import socket
 import struct
 import sys
-import threading
 import time
 
 import numpy as np
@@ -14,8 +12,8 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt, QThread, QObject, Signal, QMutex, QMutexLocker
 from GUI_ui import Ui_Form  # 导入Qt Designer生成的UI文件
 import cv2
-from PySide6 import QtCore, QtGui, QtWidgets
-
+# ================================================== 主窗口页面 =====================================================================
+             
 # 定义一些常量和状态
 VIDEO_TYPE_OFFLINE = 0
 VIDEO_TYPE_REAL_TIME = 1
@@ -24,9 +22,6 @@ VIDEO_TYPE_REAL_TIME = 1
 # 定义主窗口类，继承自QMainWindow和UI文件生成的类
 class MyMainWindow(QMainWindow, Ui_Form):
 
-
-    # def __init__(self, parent=None, video_url="", video_type=VIDEO_TYPE_OFFLINE, auto_play=True):
-    #     super(MyMainWindow, self).__init__(parent)
     def __init__(self, parent=None, video_url="", video_type=VIDEO_TYPE_OFFLINE, auto_play=True,socket_config = ["localhost",5555,"localhost",9999]):
         super().__init__()
         # socket初始化
@@ -267,7 +262,7 @@ class MyMainWindow(QMainWindow, Ui_Form):
 
     def udpStream_server(self):
         data = None
-        print("------------------视频流进入")
+       # print("------------------视频流进入")
         try:
             data, _ = self.socket_client.recvfrom(921600)
             receive_data = np.frombuffer(data, dtype='uint8')
