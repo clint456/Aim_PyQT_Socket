@@ -123,7 +123,7 @@ class MyMainWindow(QMainWindow, Ui_Form):
         self.pos_str = {'x':local_pos.x(),'y':local_pos.y(),'fire':self.is_fire}
         # 发送坐标数据
         pickle_data = pickle.dumps(self.pos_str)
-        # self.server_socket.send(pickle_data)
+        self.server_socket.send(pickle_data)
 
 
 
@@ -211,8 +211,8 @@ class MyMainWindow(QMainWindow, Ui_Form):
                 print("视频帧获取定时器----开启")
                 self.init_socket_receive_server()
                 print("【接收图像】服务器---开启")
-                #self.init_socket_send_server()
-                 #print("【发送坐标】客户端开启")
+                self.init_socket_send_server()
+                print("【发送坐标】客户端开启")
                 
 
                 self.is_pause = False
@@ -226,8 +226,8 @@ class MyMainWindow(QMainWindow, Ui_Form):
                 print("视频帧获取定时器---关闭")
                 self.socket_client.close()
                 print("【接收图像】服务器====关闭")
-                #self.server_socket.close()
-                #print("【发送坐标】客户端关闭")
+                self.server_socket.close()
+                print("【发送坐标】客户端关闭")
                 
 
                 self.is_pause = True
